@@ -10,8 +10,7 @@ from PIL import Image
 import random
 import torchvision.transforms as transforms
 
-
-class stereoloader(Dataset):
+class Stereoloader(Dataset):
     _left = []
     _right = []
 
@@ -28,7 +27,6 @@ class stereoloader(Dataset):
             self._right.append(dataroot + arr[line][1])
 
     def __getitem__(self, index):
-
         img1 = Image.open(self._left[index])
         params = get_params(self.opt, img1.size)
 
