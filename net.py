@@ -257,9 +257,58 @@ class Mymodel(nn.Module):
         return conv
 
     def deconv(self, x, num_out_layers, kernel_size, scale):
-        p_x = tf.pad(x, [[0, 0], [1, 1], [1, 1], [0, 0]])
-        conv = slim.conv2d_transpose(p_x, num_out_layers, kernel_size, scale, 'SAME')
-        return conv[:, 3:-1, 3:-1, :]
+        #p_x = tf.pad(x, [[0, 0], [1, 1], [1, 1], [0, 0]])
+        #conv = slim.conv2d_transpose(p_x, num_out_layers, kernel_size, scale, 'SAME')
+        #return conv[:, 3:-1, 3:-1, :]
+
+    def build_resnet50(self):
+        #encoder
+        conv1 = self.conv(self.model_input, 64, 7, 2)  # H/2  -   64D
+        pool1 = self.maxpool(conv1, 3)  # H/4  -   64D
+        conv2 = self.resblock(pool1, 64, 3)  # H/8  -  256D
+        conv3 = self.resblock(conv2, 128, 4)  # H/16 -  512D
+        conv4 = self.resblock(conv3, 256, 6)  # H/32 - 1024D
+        conv5 = self.resblock(conv4, 512, 3)  # H/64 - 2048D
+
+        #skips
+        skip1 = conv1
+        skip2 = pool1
+        skip3 = conv2
+        skip4 = conv3
+        skip5 = conv4
+
+        # decoder
+        upconv6 = self.upconv(conv5, 512, 3, 2)  # H/32
+        concat6 = torch.cat([upconv6, skip5], 1)
+        iconv6 = self.conv(concat6, 512, 3, 1)
+
+        upconv5 = self.upconv(iconv6, 256, 3, 2)  # H/16
+        concat5 = torch.cat([upconv5, skip4], 1)
+        iconv5 = self.conv(concat5, 256, 3, 1)
+
+        upconv4 = self.upconv(iconv5, 128, 3, 2)  # H/8
+        concat4 = torch.cat([upconv4, skip3], 1)
+        iconv4 = self.conv(concat4, 128, 3, 1)
+        self.disp4 = self.get_disp(iconv4)
+        udisp4 = self.upsample_nn(self.disp4, 2)
+
+        upconv3 = self.upconv(iconv4, 64, 3, 2)  # H/4
+        concat3 = torch.cat([upconv3, skip2, udisp4], 1)
+        iconv3 = self.conv(concat3, 64, 3, 1)
+        self.disp3 = self.get_disp(iconv3)
+        udisp3 = self.upsample_nn(self.disp3, 2)
+
+        upconv2 = self.upconv(iconv3, 32, 3, 2)  # H/2
+        concat2 = torch.cat([upconv2, skip1, udisp3], 1)
+        iconv2 = self.conv(concat2, 32, 3, 1)
+        self.disp2 = self.get_disp(iconv2)
+        udisp2 = self.upsample_nn(self.disp2, 2)
+
+        upconv1 = self.upconv(iconv2, 16, 3, 2)  # H
+        concat1 = torch.cat([upconv1, udisp2], 1)
+        iconv1 = self.conv(concat1, 16, 3, 1)
+        self.disp1 = self.get_disp(iconv1)
+
 
 class MonodepthModel(object):
     """monodepth model"""
