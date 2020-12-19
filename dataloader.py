@@ -78,7 +78,7 @@ class Stereoloader(Dataset):
         return left_image_aug, right_image_aug
 
     def __len__(self):
-        return len(self.__left)
+        return len(self._left)
 
 
 def get_params(opt, size):
