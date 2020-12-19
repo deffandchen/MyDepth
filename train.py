@@ -5,6 +5,8 @@ import argparse
 from torch.utils.data import DataLoader
 
 from dataloader import Stereoloader
+from Net import MyNet
+from Model import MyModel
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
@@ -40,6 +42,13 @@ train_data = DataLoader(data_loader, batch_size=opt.batchsize, shuffle=True  )  
 dataset_size = len(data_loader)
 print('#training images: %d' %dataset_size)
 
-if __name__ == '__main__':
+net = MyNet()
+loss_func = MyModel()
 
+#TODO：
+def train():
+
+
+if __name__ == '__main__':
+    train()
 

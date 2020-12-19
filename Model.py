@@ -5,21 +5,17 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import Net
 
 class MyModel(nn.Module):
-    def __init__(self,args,disp_list):
+    def __init__(self):
 
         #self.disp_list = Net.MyNet()
-        self.disp1 = disp_list[0]
-        self.disp2 = disp_list[1]
-        self.disp3 = disp_list[2]
-        self.disp4 = disp_list[3]
 
-    def build_outputs(self):
+    def build_outputs(self,disp_list):
         # STORE DISPARITIES
         #with tf.variable_scope('disparities'):
-        self.disp_est = [self.disp1, self.disp2, self.disp3, self.disp4]
+
+        self.disp_est = [disp_list[0], disp_list[1], disp_list[2], disp_list[3]]
         self.disp_left_est = [torch.unsqueeze(d[:,0, :, :], 1) for d in self.disp_est]
         self.disp_right_est = [torch.unsqueeze(d[:,1, :, :], 1) for d in self.disp_est]
 
@@ -84,6 +80,6 @@ class MyModel(nn.Module):
 
         return self.total_loss
 
-    def forward(self):
-        self.build_outputs()
+    def forward(self,disp_list):
+        self.build_outputs(disp_list)
         self.build_losses()
