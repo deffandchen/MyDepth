@@ -16,8 +16,8 @@ class StereoDataset(Dataset):
 
     def __init__(self, args):
         self.args = args
-        filename = self.args.file_name
-        dataroot = self.args.root_dir
+        filename = self.args.filename
+        dataroot = self.args.data_path
         self.normalize = True
 
         files = np.genfromtxt(filename, dtype=str, delimiter=' ')

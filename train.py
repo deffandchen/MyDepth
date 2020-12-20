@@ -15,7 +15,7 @@ parser.add_argument('--model_name',                type=str,   help='model name'
 parser.add_argument('--encoder',                   type=str,   help='type of encoder, vgg or resnet50', default='vgg')
 parser.add_argument('--dataset',                   type=str,   help='dataset to train on, kitti, or cityscapes', default='kitti')
 parser.add_argument('--data_path',                 type=str,   help='path to the data', required=True)
-parser.add_argument('--filenames_file',            type=str,   help='path to the filenames text file', required=True)
+parser.add_argument('--filename',            type=str,   help='path to the filenames text file', required=True)
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
 parser.add_argument('--batch_size',                type=int,   help='batch size', default=8)
@@ -41,10 +41,10 @@ args = parser.parse_args()
 #TODO：
 def train():
     train_data = StereoDataset(args)  # create dataloader
-    train_loader = DataLoader(train_data, batch_size=args.batchsize, shuffle=True)  # , num_workers=1)
+    train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)  # , num_workers=1)
     dataset_size = len(train_data)
     print('#training images: %d' % dataset_size)
-
+    #TODO: 验证dataloader正确性
     net = MyNet()
     loss_func = MyModel()
 

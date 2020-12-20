@@ -130,7 +130,7 @@ class MyNet(nn.Module):
         conv = self.conv(upsample, num_out_layers, kernel_size, 1)
         return conv
 
-    def deconv(self, x, num_out_layers, kernel_size, scale):
+    #def deconv(self, x, num_out_layers, kernel_size, scale):
         #p_x = tf.pad(x, [[0, 0], [1, 1], [1, 1], [0, 0]])
         #conv = slim.conv2d_transpose(p_x, num_out_layers, kernel_size, scale, 'SAME')
         #return conv[:, 3:-1, 3:-1, :]
@@ -187,9 +187,6 @@ class MyNet(nn.Module):
 
     def forward(self):
         self.build_resnet50()
-        self.build_outputs()
-        self.build_losses()
-        return self.total_loss
 
 
 def bilinear_sampler_1d_h(input_images, x_offset, wrap_mode='edge', name='bilinear_sampler', **kwargs):

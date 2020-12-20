@@ -8,7 +8,7 @@ import torch.nn as nn
 
 class MyModel(nn.Module):
     def __init__(self):
-
+        self.name = "image proj"
         #self.disp_list = Net.MyNet()
 
     def build_outputs(self,disp_list):
