@@ -40,7 +40,7 @@ class MyNet(nn.Module):
     def __init__(self, mode, block):
         super(MyNet, self).__init__()
         self.mode = mode
-
+        self.inplanes = 64
         self.conv_pre = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -57,12 +57,18 @@ class MyNet(nn.Module):
         self.upconv2 = self.upconv(32, 3, 1)
         self.upconv1 = self.upconv(16, 3, 1)
 
-        self.conv6 = self.conv(512, 3, 1)
-        self.conv5 = self.conv(256, 3, 1)
-        self.conv4 = self.conv(128, 3, 1)
-        self.conv3 = self.conv(64, 3, 1)
-        self.conv2 = self.conv(32, 3, 1)
-        self.conv1 = self.conv(16, 3, 1)
+        self.conv6 = self.conv(self.planes5 + self.planes4, 512, 3, 1)
+        self.conv5 = self.conv(self.planes4 + self.planes3, 256, 3, 1)
+        self.conv4 = self.conv(self.planes3 + self.planes2, 128, 3, 1)
+        self.conv3 = self.conv(self.planes2 + self.planes1, 64, 3, 1)
+        self.conv2 = self.conv(self.planes5 + self.planes4, 32, 3, 1)
+        self.conv1 = self.conv(self.planes5 + self.planes4, 16, 3, 1)
+
+        self.planes1 = 64
+        self.planes2 = 64
+        self.planes3 = 128
+        self.planes4 = 256
+        self.planes5 = 512
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -81,8 +87,8 @@ class MyNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def conv(self, planes, kernel_size, stride):
-        conv = nn.Sequential(nn.Conv2d(self.inplanes+ self.inplanes / 2, planes,
+    def conv(self, inplanes, planes, kernel_size, stride):
+        conv = nn.Sequential(nn.Conv2d(inplanes, planes,
                         kernel_size=kernel_size, stride=stride, bias=False),
                 nn.BatchNorm2d(planes),
         )
@@ -129,30 +135,30 @@ class MyNet(nn.Module):
         upsample6 = self.upsample(conv5,2)
         upconv6 = self.upconv6(upsample6)  # H/32
         concat6 = torch.cat([upconv6, skip5], 1)
-        iconv6 = self.conv6(concat6)
+        iconv6 = self.conv6(concat6)         #512
 
         upsample5 = self.upsample(iconv6, 2)
         upconv5 = self.upconv5(upsample5)  # H/16
-        concat5 = torch.cat([upconv5, skip4], 1)
-        iconv5 = self.conv5(concat5)
+        concat5 = torch.cat([upconv5, skip4], 1)    #256+128
+        iconv5 = self.conv5(concat5)          #256
 
         upsample4 = self.upsample(iconv5, 2)
         upconv4 = self.upconv4(upsample4)  # H/8
-        concat4 = torch.cat([upconv4, skip3], 1)
-        iconv4 = self.conv4(concat4)
+        concat4 = torch.cat([upconv4, skip3], 1)  #128+64
+        iconv4 = self.conv4(concat4)           # 128
         self.disp4 = self.get_disp(iconv4)
         udisp4 = self.upsample(self.disp4, 2)
 
         upsample3 = self.upsample(iconv4)
         upconv3 = self.upconv3(upsample3)  # H/4
-        concat3 = torch.cat([upconv3, skip2, udisp4], 1)
-        iconv3 = self.conv3(concat3)
+        concat3 = torch.cat([upconv3, skip2, udisp4], 1)   #64+32
+        iconv3 = self.conv3(concat3)                    #64
         self.disp3 = self.get_disp(iconv3)
         udisp3 = self.upsample(self.disp3, 2)
 
         upsample2 = self.upsample(iconv3)
         upconv2 = self.upconv2(upsample2)  # H/2
-        concat2 = torch.cat([upconv2, skip1, udisp3], 1)
+        concat2 = torch.cat([upconv2, skip1, udisp3], 1)    # 32+16
         iconv2 = self.conv2(concat2)
         self.disp2 = self.get_disp(iconv2)
         udisp2 = self.upsample(self.disp2, 2)
