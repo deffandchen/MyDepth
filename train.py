@@ -4,7 +4,7 @@
 import argparse
 from torch.utils.data import DataLoader
 
-from dataloader import Stereoloader
+from dataset import StereoDataset
 from Net import MyNet
 from Model import MyModel
 
@@ -37,17 +37,16 @@ parser.add_argument('--full_summary',                          help='if set, wil
 
 args = parser.parse_args()
 
-data_loader = Stereoloader(opt) # create dataloader
-train_data = DataLoader(data_loader, batch_size=opt.batchsize, shuffle=True  )  # , num_workers=1)
-dataset_size = len(data_loader)
-print('#training images: %d' %dataset_size)
-
-net = MyNet()
-loss_func = MyModel()
 
 #TODO：
 def train():
+    train_data = StereoDataset(args)  # create dataloader
+    train_loader = DataLoader(train_data, batch_size=args.batchsize, shuffle=True)  # , num_workers=1)
+    dataset_size = len(train_data)
+    print('#training images: %d' % dataset_size)
 
+    net = MyNet()
+    loss_func = MyModel()
 
 if __name__ == '__main__':
     train()
