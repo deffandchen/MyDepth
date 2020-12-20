@@ -14,17 +14,16 @@ class Stereoloader(Dataset):
     _left = []
     _right = []
 
-    def __init__(self, opt):
-        self.opt = opt
-        filename = self.opt.filename
-        dataroot = self.opt.dataroot
-        arrlenth = 66 + len(dataroot)
-        arrlen = '|S' + str(arrlenth)
-        arr = np.genfromtxt(filename, dtype=str, delimiter=' ')
+    def __init__(self, args):
+        filename = args.file_name
+        dataroot = args.root_dir
+        #arrlenth = 66 + len(dataroot)
+        #arrlen = '|S' + str(arrlenth)
+        files = np.genfromtxt(filename, dtype=str, delimiter=' ')
         n_line = open(filename).read().count('\n')
-        for line in range(n_line):
-            self._left.append(dataroot + arr[line][0])
-            self._right.append(dataroot + arr[line][1])
+        for f in files:
+            self._left.append(dataroot + f[0])
+            self._right.append(dataroot + f[1])
 
     def __getitem__(self, index):
         img1 = Image.open(self._left[index])
