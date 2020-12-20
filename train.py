@@ -3,6 +3,7 @@
 #
 import argparse
 from torch.utils.data import DataLoader
+from torch.autograd import Variable
 
 from dataset import StereoDataset
 from Net import MyNet
@@ -44,9 +45,13 @@ def train():
     train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)  # , num_workers=1)
     dataset_size = len(train_data)
     print('#training images: %d' % dataset_size)
+    net = MyNet(args.mode)
+    loss_func = MyModel(args)
     #TODO: 验证dataloader正确性
-    net = MyNet()
-    loss_func = MyModel()
+    for i, data in enumerate(train_loader):
+        out = net(Variable(data['left_img']))
+        loss = loss_func(data,out)
+
 
 if __name__ == '__main__':
     train()

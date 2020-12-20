@@ -1,148 +1,122 @@
-import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
+
+class BasicBlock(nn.Module):
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=3, stride=stride,
+                     padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
+                     padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
 
 class MyNet(nn.Module):
-    def __init__(self, params, mode, left, right, reuse_variables=None, model_index=0):
-        self.params = params
+
+    def __init__(self, mode, block):
+        super(MyNet, self).__init__()
         self.mode = mode
-        self.left = left
-        self.right = right
-        self.model_collection = ['model_' + str(model_index)]
 
-        self.reuse_variables = reuse_variables
+        self.conv_pre = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+                               bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, 3)
+        self.layer2 = self._make_layer(block, 128, 4, stride=2)
+        self.layer3 = self._make_layer(block, 256, 6, stride=2)
+        self.layer4 = self._make_layer(block, 512, 3, stride=2)
+        self.upconv6 = self.upconv(512, 3, 1)
+        self.upconv5 = self.upconv(256, 3, 1)
+        self.upconv4 = self.upconv(128, 3, 1)
+        self.upconv3 = self.upconv(64, 3, 1)
+        self.upconv2 = self.upconv(32, 3, 1)
+        self.upconv1 = self.upconv(16, 3, 1)
 
-        self.build_model()
-        self.build_outputs()
+        self.conv6 = self.conv(512, 3, 1)
+        self.conv5 = self.conv(256, 3, 1)
+        self.conv4 = self.conv(128, 3, 1)
+        self.conv3 = self.conv(64, 3, 1)
+        self.conv2 = self.conv(32, 3, 1)
+        self.conv1 = self.conv(16, 3, 1)
 
-        if self.mode == 'test':
-            return
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes, planes,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes),
+            )
 
-        self.build_losses()
-        self.build_summaries()
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
 
-    def gradient_x(self, img):
-        gx = img[:, :, :-1, :] - img[:, :, 1:, :]
-        return gx
+        return nn.Sequential(*layers)
 
-    def gradient_y(self, img):
-        gy = img[:, :-1, :, :] - img[:, 1:, :, :]
-        return gy
+    def conv(self, planes, kernel_size, stride):
+        conv = nn.Sequential(nn.Conv2d(self.inplanes+ self.inplanes / 2, planes,
+                        kernel_size=kernel_size, stride=stride, bias=False),
+                nn.BatchNorm2d(planes),
+        )
+        self.inplanes = planes
+        return conv
 
-    def upsample_nn(self, x, ratio):
+    def upconv(self, planes, kernel_size, stride):
+        conv = nn.Sequential(nn.Conv2d(self.inplanes, planes,
+                        kernel_size=kernel_size, stride=stride, bias=False),
+                nn.BatchNorm2d(planes),
+        )
+        self.inplanes = planes
+        return conv
+
+    def upsample(self, x, ratio):
         s = x.size()
         h = int(s[2])
         w = int(s[3])
-        return nn.functional.upsample(x, [h*ratio, w*ratio], mode='nearest')
+        nh = h * ratio
+        nw = w * ratio
+        temp = nn.functional.upsample(x, [nh, nw], mode='nearest')
+        return temp
 
-    def scale_pyramid(self, img, num_scales):
-        scaled_imgs = [img]
-        s = img.size()
-        h = int(s[2])
-        w = int(s[3])
-        for i in range(num_scales - 1):
-            ratio = 2 ** (i + 1)
-            nh = h // ratio
-            nw = w // ratio
-            scaled_imgs.append(nn.functional.upsample(img, [nh, nw], mode='nearest'))
-        return scaled_imgs
-
-    def generate_image_left(self, img, disp):
-        return bilinear_sampler_1d_h(img, -disp)
-
-    def generate_image_right(self, img, disp):
-        return bilinear_sampler_1d_h(img, disp)
-
-    def SSIM(self, x, y):
-        C1 = 0.01 ** 2
-        C2 = 0.03 ** 2
-
-        mu_x = nn.functional.avg_pool2d(x, 3, 1, 'VALID')
-        mu_y = nn.functional.avg_pool2d(y, 3, 1, 'VALID')
-
-        sigma_x = nn.functional.avg_pool2d(x ** 2, 3, 1, 'VALID') - mu_x ** 2
-        sigma_y = nn.functional.avg_pool2d(y ** 2, 3, 1, 'VALID') - mu_y ** 2
-        sigma_xy = nn.functional.avg_pool2d(x * y, 3, 1, 'VALID') - mu_x * mu_y
-
-        SSIM_n = (2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)
-        SSIM_d = (mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x + sigma_y + C2)
-
-        SSIM = SSIM_n / SSIM_d
-
-        return torch.clamp((1 - SSIM) / 2, 0, 1)
-
-    def get_disparity_smoothness(self, disp, pyramid):
-        disp_gradients_x = [self.gradient_x(d) for d in disp]
-        disp_gradients_y = [self.gradient_y(d) for d in disp]
-
-        image_gradients_x = [self.gradient_x(img) for img in pyramid]
-        image_gradients_y = [self.gradient_y(img) for img in pyramid]
-
-        weights_x = [torch.exp(-torch.mean(torch.abs(g), 3, keepdim=True)) for g in image_gradients_x]
-        weights_y = [torch.exp(-torch.mean(torch.abs(g), 3, keepdim=True)) for g in image_gradients_y]
-
-        smoothness_x = [disp_gradients_x[i] * weights_x[i] for i in range(4)]
-        smoothness_y = [disp_gradients_y[i] * weights_y[i] for i in range(4)]
-        return smoothness_x + smoothness_y
-
-    def get_disp(self, x):
-        disp = 0.3 * self.conv(x, 2, 3, 1, nn.functional.sigmoid)
-        return disp
-
-    def conv(self, x, num_out_layers, kernel_size, stride):
-        #p = np.floor((kernel_size - 1) / 2).astype(np.int32)
-        #p_x = torch.pad(x, [[0, 0], [p, p], [p, p], [0, 0]])
-        return nn.Conv2d(x, num_out_layers, kernel_size, stride)
-
-    def conv_block(self, x, num_out_layers, kernel_size):
-        conv1 = self.conv(x, num_out_layers, kernel_size, 1)
-        conv2 = self.conv(conv1, num_out_layers, kernel_size, 2)
-        return conv2
-
-    def maxpool(self, x, kernel_size):
-        #p = np.floor((kernel_size - 1) / 2).astype(np.int32)
-        #p_x = tf.pad(x, [[0, 0], [p, p], [p, p], [0, 0]])
-        return nn.MaxPool2d(x, kernel_size)
-
-    def resconv(self, x, num_layers, stride):
-        do_proj = x.size()[1] != num_layers or stride == 2
-        shortcut = []
-        conv1 = self.conv(x, num_layers, 1, 1)
-        conv2 = self.conv(conv1, num_layers, 3, stride)
-        conv3 = self.conv(conv2, 4 * num_layers, 1, 1)
-        if do_proj:
-            shortcut = self.conv(x, 4 * num_layers, 1, stride)
-        else:
-            shortcut = x
-        return nn.ELU(conv3 + shortcut)
-
-    def resblock(self, x, num_layers, num_blocks):
-        out = x
-        for i in range(num_blocks - 1):
-            out = self.resconv(out, num_layers, 1)
-        out = self.resconv(out, num_layers, 2)
-        return out
-
-    def upconv(self, x, num_out_layers, kernel_size, scale):
-        upsample = self.upsample_nn(x, scale)
-        conv = self.conv(upsample, num_out_layers, kernel_size, 1)
-        return conv
-
-    #def deconv(self, x, num_out_layers, kernel_size, scale):
-        #p_x = tf.pad(x, [[0, 0], [1, 1], [1, 1], [0, 0]])
-        #conv = slim.conv2d_transpose(p_x, num_out_layers, kernel_size, scale, 'SAME')
-        #return conv[:, 3:-1, 3:-1, :]
-
-    def build_resnet50(self):
+    def forward(self, x):
         #encoder
-        conv1 = self.conv(self.model_input, 64, 7, 2)  # H/2  -   64D
-        pool1 = self.maxpool(conv1, 3)  # H/4  -   64D
-        conv2 = self.resblock(pool1, 64, 3)  # H/8  -  256D
-        conv3 = self.resblock(conv2, 128, 4)  # H/16 -  512D
-        conv4 = self.resblock(conv3, 256, 6)  # H/32 - 1024D
-        conv5 = self.resblock(conv4, 512, 3)  # H/64 - 2048D
+        conv1 = self.conv_pre(x)
+        bn1 = self.bn1(conv1)
+        relu = self.relu(bn1)
+        pool1 = self.maxpool(relu)
+
+        conv2 = self.layer1(pool1)
+        conv3 = self.layer2(conv2)
+        conv4 = self.layer3(conv3)
+        conv5 = self.layer4(conv4)
 
         #skips
         skip1 = conv1
@@ -152,127 +126,41 @@ class MyNet(nn.Module):
         skip5 = conv4
 
         # decoder
-        upconv6 = self.upconv(conv5, 512, 3, 2)  # H/32
+        upsample6 = self.upsample(conv5,2)
+        upconv6 = self.upconv6(upsample6)  # H/32
         concat6 = torch.cat([upconv6, skip5], 1)
-        iconv6 = self.conv(concat6, 512, 3, 1)
+        iconv6 = self.conv6(concat6)
 
-        upconv5 = self.upconv(iconv6, 256, 3, 2)  # H/16
+        upsample5 = self.upsample(iconv6, 2)
+        upconv5 = self.upconv5(upsample5)  # H/16
         concat5 = torch.cat([upconv5, skip4], 1)
-        iconv5 = self.conv(concat5, 256, 3, 1)
+        iconv5 = self.conv5(concat5)
 
-        upconv4 = self.upconv(iconv5, 128, 3, 2)  # H/8
+        upsample4 = self.upsample(iconv5, 2)
+        upconv4 = self.upconv4(upsample4)  # H/8
         concat4 = torch.cat([upconv4, skip3], 1)
-        iconv4 = self.conv(concat4, 128, 3, 1)
+        iconv4 = self.conv4(concat4)
         self.disp4 = self.get_disp(iconv4)
-        udisp4 = self.upsample_nn(self.disp4, 2)
+        udisp4 = self.upsample(self.disp4, 2)
 
-        upconv3 = self.upconv(iconv4, 64, 3, 2)  # H/4
+        upsample3 = self.upsample(iconv4)
+        upconv3 = self.upconv3(upsample3)  # H/4
         concat3 = torch.cat([upconv3, skip2, udisp4], 1)
-        iconv3 = self.conv(concat3, 64, 3, 1)
+        iconv3 = self.conv3(concat3)
         self.disp3 = self.get_disp(iconv3)
-        udisp3 = self.upsample_nn(self.disp3, 2)
+        udisp3 = self.upsample(self.disp3, 2)
 
-        upconv2 = self.upconv(iconv3, 32, 3, 2)  # H/2
+        upsample2 = self.upsample(iconv3)
+        upconv2 = self.upconv2(upsample2)  # H/2
         concat2 = torch.cat([upconv2, skip1, udisp3], 1)
-        iconv2 = self.conv(concat2, 32, 3, 1)
+        iconv2 = self.conv2(concat2)
         self.disp2 = self.get_disp(iconv2)
-        udisp2 = self.upsample_nn(self.disp2, 2)
+        udisp2 = self.upsample(self.disp2, 2)
 
-        upconv1 = self.upconv(iconv2, 16, 3, 2)  # H
+        upsample1 = self.upsample(iconv2)
+        upconv1 = self.upconv1(upsample1)  # H
         concat1 = torch.cat([upconv1, udisp2], 1)
-        iconv1 = self.conv(concat1, 16, 3, 1)
+        iconv1 = self.conv1(concat1)
         self.disp1 = self.get_disp(iconv1)
         return [self.disp1, self.disp2, self.disp3, self.disp4]
 
-
-    def forward(self):
-        self.build_resnet50()
-
-
-def bilinear_sampler_1d_h(input_images, x_offset, wrap_mode='edge', name='bilinear_sampler', **kwargs):
-    def _repeat(x, n_repeats):
-        rep = x.unsqueeze(1).repeat(1, n_repeats)
-        return rep.view(-1)
-
-    def _interpolate(im, x, y):
-
-        # handle both texture border types
-        _edge_size = 0
-        if _wrap_mode == 'border':
-            _edge_size = 1
-            im = F.pad(im,(0,1,1,0), 'constant',0)
-            x = x + _edge_size
-            y = y + _edge_size
-        elif _wrap_mode == 'edge':
-            _edge_size = 0
-        else:
-            return None
-
-        x = torch.clamp(x, 0.0,  _width_f - 1 + 2 * _edge_size)
-
-        x0_f = torch.floor(x)
-        y0_f = torch.floor(y)
-        x1_f = x0_f + 1
-
-        x0 = x0_f.type(torch.FloatTensor).cuda()
-        y0 = y0_f.type(torch.FloatTensor).cuda()
-
-        min_val = _width_f - 1 + 2 * _edge_size
-        scalar = Variable(torch.FloatTensor([min_val]).cuda())
-
-        x1 = torch.min(x1_f, scalar)
-        x1 = x1.type(torch.FloatTensor).cuda()
-        dim2 = (_width + 2 * _edge_size)
-        dim1 = (_width + 2 * _edge_size) * (_height + 2 * _edge_size)
-        base = Variable(_repeat(torch.arange(_num_batch) * dim1, _height * _width).cuda())
-
-        base_y0 = base + y0 * dim2
-        idx_l = base_y0 + x0
-        idx_r = base_y0 + x1
-        idx_l = idx_l.type(torch.cuda.LongTensor)
-        idx_r = idx_r.type(torch.cuda.LongTensor)
-
-        im_flat = im.contiguous().view(-1, _num_channels)
-        pix_l = torch.gather(im_flat, 0, idx_l.repeat(_num_channels).view(-1, _num_channels))
-        pix_r = torch.gather(im_flat, 0, idx_r.repeat(_num_channels).view(-1, _num_channels))
-
-        weight_l = (x1_f - x).unsqueeze(1)
-        weight_r = (x - x0_f).unsqueeze(1)
-
-        return weight_l * pix_l + weight_r * pix_r
-
-    def _transform(input_images, x_offset):
-
-        a = Variable(torch.linspace(0.0, _width_f -1.0, _width).cuda())
-        b = Variable(torch.linspace(0.0, _height_f -1.0, _height).cuda())
-
-        x_t = a.repeat(_height)
-        y_t = b.repeat(_width,1).t().contiguous().view(-1)
-
-        x_t_flat = x_t.repeat(_num_batch, 1)
-        y_t_flat = y_t.repeat(_num_batch, 1)
-
-        x_t_flat = x_t_flat.view(-1)
-        y_t_flat = y_t_flat.view(-1)
-
-        x_t_flat = x_t_flat + x_offset.contiguous().view(-1) * _width_f
-
-        input_transformed = _interpolate(input_images, x_t_flat, y_t_flat)
-
-        output = input_transformed.view(_num_batch, _num_channels, _height, _width)
-
-        return output
-
-    _num_batch    = input_images.size(0)
-    _num_channels = input_images.size(1)
-    _height       = input_images.size(2)
-    _width        = input_images.size(3)
-
-    _height_f = float(_height)
-    _width_f = float(_width)
-
-    _wrap_mode = wrap_mode
-
-    output = _transform(input_images, x_offset)
-
-    return output
