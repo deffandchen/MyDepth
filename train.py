@@ -2,6 +2,7 @@
 #
 #
 import argparse
+import torch
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torch.optim as optim
@@ -41,11 +42,15 @@ args = parser.parse_args()
 
 #TODO：
 def train():
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
     train_data = StereoDataset(args)  # create dataloader
     train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)  # , num_workers=1)
     dataset_size = len(train_data)
     print('#training images: %d' % dataset_size)
+
     net = MyNet(args.mode,BasicBlock)
+    net.to(device)
     loss_func = MyLoss(args)
     optimizer = optim.Adam(net.parameters(),lr=args.learning_rate)
 
@@ -64,7 +69,7 @@ def train():
                 print("[%d / %d, %5d]  loss: %.3f" % (epoch,args.epochs,i,loss_step))
                 loss_step = 0.0
 
-    
+
 if __name__ == '__main__':
     train()
 
