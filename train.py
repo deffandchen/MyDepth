@@ -7,7 +7,7 @@ from torch.autograd import Variable
 
 from dataset import StereoDataset
 from Net import BasicBlock,MyNet
-from Model import MyModel
+from Model import MyLoss
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
@@ -45,12 +45,14 @@ def train():
     dataset_size = len(train_data)
     print('#training images: %d' % dataset_size)
     net = MyNet(args.mode,BasicBlock)
-    loss_func = MyModel(args)
+    loss_func = MyLoss(args)
     #TODO: 验证dataloader正确性  修改网络bug
 
     for i, data in enumerate(train_loader):
-        out = net(Variable(data['left_img']))
-        loss = loss_func(data,out)
+        left = data['left_img']
+
+        #out = net(Variable(data['left_img']))
+        #loss = loss_func(data, out)
 
 
 if __name__ == '__main__':

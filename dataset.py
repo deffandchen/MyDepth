@@ -18,7 +18,7 @@ class StereoDataset(Dataset):
         self.args = args
         filename = self.args.filename
         dataroot = self.args.data_path
-        self.normalize = True
+        self.normalize = False
 
         files = np.genfromtxt(filename, dtype=str, delimiter=' ')
         #n_line = open(filename).read().count('\n')

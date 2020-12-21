@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-class MyModel(nn.Module):
+class MyLoss(nn.Module):
     def __init__(self,args):
         self.mode = args.mode
 
@@ -75,10 +75,6 @@ class MyModel(nn.Module):
         smoothness_x = [disp_gradients_x[i] * weights_x[i] for i in range(4)]
         smoothness_y = [disp_gradients_y[i] * weights_y[i] for i in range(4)]
         return smoothness_x + smoothness_y
-
-    def get_disp(self, x):
-        disp = 0.3 * self.conv(x, 2, 3, 1, nn.functional.sigmoid)
-        return disp
 
     def build_model(self, data):
         self.left_pyramid = self.scale_pyramid(Variable(data['left_img']), 4)
@@ -158,7 +154,6 @@ class MyModel(nn.Module):
         self.build_outputs(disp_list)
         self.build_losses()
         return self.total_loss
-
 
 
 def bilinear_sampler_1d_h(input_images, x_offset, wrap_mode='edge', name='bilinear_sampler', **kwargs):
