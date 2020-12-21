@@ -4,6 +4,7 @@
 import argparse
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
+import torch.optim as optim
 
 from dataset import StereoDataset
 from Net import BasicBlock,MyNet
@@ -20,7 +21,7 @@ parser.add_argument('--filename',            type=str,   help='path to the filen
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
 parser.add_argument('--batch_size',                type=int,   help='batch size', default=8)
-parser.add_argument('--num_epochs',                type=int,   help='number of epochs', default=50)
+parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
 parser.add_argument('--lr_loss_weight',            type=float, help='left-right consistency weight', default=1.0)
 parser.add_argument('--alpha_image_loss',          type=float, help='weight between SSIM and L1 in the image loss', default=0.85)
@@ -46,15 +47,24 @@ def train():
     print('#training images: %d' % dataset_size)
     net = MyNet(args.mode,BasicBlock)
     loss_func = MyLoss(args)
-    #TODO: 验证dataloader正确性  修改网络bug
+    optimizer = optim.Adam(net.parameters(),lr=args.learning_rate)
 
-    for i, data in enumerate(train_loader):
-        left = data['left_img']
+    for epoch in range(args.start_epoch,args.epochs):
+        loss_step = 0.0
+        for i, data in enumerate(train_loader):
+            left = Variable(data['left_img'])
+            optimizer.zero_grad()
+            out = net(left)
+            loss = loss_func(data, out)
+            loss.backward()
+            optimizer.step()
+            loss_step += loss.data[0]
 
-        #out = net(Variable(data['left_img']))
-        #loss = loss_func(data, out)
+            if i % 100 == 0:
+                print("[%d / %d, %5d]  loss: %.3f" % (epoch,args.epochs,i,loss_step))
+                loss_step = 0.0
 
-
+    
 if __name__ == '__main__':
     train()
 
