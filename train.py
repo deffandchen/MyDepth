@@ -38,7 +38,6 @@ parser.add_argument('--full_summary',                          help='if set, wil
 
 args = parser.parse_args()
 
-
 #TODO：
 def train():
     train_data = StereoDataset(args)  # create dataloader

@@ -57,12 +57,12 @@ class MyNet(nn.Module):
         self.upconv2 = self.upconv(32, 3, 1)
         self.upconv1 = self.upconv(16, 3, 1)
 
-        self.conv6 = self.conv(self.planes5 + self.planes4, 512, 3, 1)
-        self.conv5 = self.conv(self.planes4 + self.planes3, 256, 3, 1)
-        self.conv4 = self.conv(self.planes3 + self.planes2, 128, 3, 1)
-        self.conv3 = self.conv(self.planes2 + self.planes1, 64, 3, 1)
-        self.conv2 = self.conv(self.planes5 + self.planes4, 32, 3, 1)
-        self.conv1 = self.conv(self.planes5 + self.planes4, 16, 3, 1)
+        self.conv6 = self.conv(512+512, 512, 3, 1)
+        self.conv5 = self.conv(256+256, 256, 3, 1)
+        self.conv4 = self.conv(128+128, 128, 3, 1)
+        self.conv3 = self.conv(128+128, 64, 3, 1)
+        self.conv2 = self.conv(32+64+64, 32, 3, 1)
+        self.conv1 = self.conv(16+32, 16, 3, 1)
 
         self.planes1 = 64
         self.planes2 = 64
@@ -125,48 +125,49 @@ class MyNet(nn.Module):
         conv5 = self.layer4(conv4)
 
         #skips
-        skip1 = conv1
-        skip2 = pool1
-        skip3 = conv2
-        skip4 = conv3
-        skip5 = conv4
+        skip1 = conv1    #64
+        skip2 = pool1    #64
+        skip3 = conv2    #128
+        skip4 = conv3   #256
+        skip5 = conv4   #512
 
         # decoder
         upsample6 = self.upsample(conv5,2)
         upconv6 = self.upconv6(upsample6)  # H/32
-        concat6 = torch.cat([upconv6, skip5], 1)
+        concat6 = torch.cat([upconv6, skip5], 1)   #512+512
+        self.inplanes = concat6.size()[1]
         iconv6 = self.conv6(concat6)         #512
 
         upsample5 = self.upsample(iconv6, 2)
         upconv5 = self.upconv5(upsample5)  # H/16
-        concat5 = torch.cat([upconv5, skip4], 1)    #256+128
+        concat5 = torch.cat([upconv5, skip4], 1)    #256+256
         iconv5 = self.conv5(concat5)          #256
 
         upsample4 = self.upsample(iconv5, 2)
         upconv4 = self.upconv4(upsample4)  # H/8
-        concat4 = torch.cat([upconv4, skip3], 1)  #128+64
+        concat4 = torch.cat([upconv4, skip3], 1)  #128+128
         iconv4 = self.conv4(concat4)           # 128
-        self.disp4 = self.get_disp(iconv4)
+        self.disp4 = self.get_disp(iconv4)     # 128
         udisp4 = self.upsample(self.disp4, 2)
 
         upsample3 = self.upsample(iconv4)
         upconv3 = self.upconv3(upsample3)  # H/4
-        concat3 = torch.cat([upconv3, skip2, udisp4], 1)   #64+32
+        concat3 = torch.cat([upconv3, skip2, udisp4], 1)   #64+64 + 128
         iconv3 = self.conv3(concat3)                    #64
-        self.disp3 = self.get_disp(iconv3)
+        self.disp3 = self.get_disp(iconv3)            #64
         udisp3 = self.upsample(self.disp3, 2)
 
         upsample2 = self.upsample(iconv3)
-        upconv2 = self.upconv2(upsample2)  # H/2
-        concat2 = torch.cat([upconv2, skip1, udisp3], 1)    # 32+16
+        upconv2 = self.upconv2(upsample2)  # H/2   32
+        concat2 = torch.cat([upconv2, skip1, udisp3], 1)    # 32+64 + 64
         iconv2 = self.conv2(concat2)
-        self.disp2 = self.get_disp(iconv2)
+        self.disp2 = self.get_disp(iconv2)          #32
         udisp2 = self.upsample(self.disp2, 2)
 
         upsample1 = self.upsample(iconv2)
-        upconv1 = self.upconv1(upsample1)  # H
-        concat1 = torch.cat([upconv1, udisp2], 1)
+        upconv1 = self.upconv1(upsample1)  # H   16
+        concat1 = torch.cat([upconv1, udisp2], 1) # 16+ 32
         iconv1 = self.conv1(concat1)
-        self.disp1 = self.get_disp(iconv1)
+        self.disp1 = self.get_disp(iconv1)        #16
         return [self.disp1, self.disp2, self.disp3, self.disp4]
 

@@ -36,9 +36,8 @@ class StereoDataset(Dataset):
 
         #transforms
         transform_list = []
-        if 'resize' in self.args.resize:
-            out_size = [self.args.input_height, self.args.input_width]
-            transform_list.append(transforms.Resize(out_size, interpolation=Image.BICUBIC))
+        out_size = [self.args.input_height, self.args.input_width]
+        transform_list.append(transforms.Resize(out_size, interpolation=Image.BICUBIC))
 
         transform_list += [transforms.ToTensor()]
 
