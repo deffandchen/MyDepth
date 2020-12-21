@@ -1,6 +1,10 @@
-#
-#
-#
+#====================================================
+#  File Name   : train.py
+#  Author      : deffand
+#  Date        : 2020/12/17
+#  Description :
+#====================================================
+
 import argparse
 import torch
 from torch.utils.data import DataLoader
@@ -22,6 +26,7 @@ parser.add_argument('--filename',            type=str,   help='path to the filen
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
 parser.add_argument('--batch_size',                type=int,   help='batch size', default=8)
+parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
 parser.add_argument('--lr_loss_weight',            type=float, help='left-right consistency weight', default=1.0)
@@ -29,7 +34,6 @@ parser.add_argument('--alpha_image_loss',          type=float, help='weight betw
 parser.add_argument('--disp_gradient_loss_weight', type=float, help='disparity smoothness weigth', default=0.1)
 parser.add_argument('--do_stereo',                             help='if set, will train the stereo model', action='store_true')
 parser.add_argument('--wrap_mode',                 type=str,   help='bilinear sampler wrap mode, edge or border', default='border')
-parser.add_argument('--use_deconv',                            help='if set, will use transposed convolutions', action='store_true')
 parser.add_argument('--num_gpus',                  type=int,   help='number of GPUs to use for training', default=1)
 parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=8)
 parser.add_argument('--output_directory',          type=str,   help='output directory for test disparities, if empty outputs to checkpoint folder', default='')
@@ -51,8 +55,12 @@ def train():
 
     net = MyNet(args.mode,BasicBlock)
     net.to(device)
+    if args.checkpoint_path != '':
+        state_dict = torch.load(args.checkpoint_path)
+        net.load_state_dict(state_dict['net'])
+
     loss_func = MyLoss(args)
-    optimizer = optim.Adam(net.parameters(),lr=args.learning_rate)
+    optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
 
     for epoch in range(args.start_epoch,args.epochs):
         loss_step = 0.0
@@ -66,9 +74,11 @@ def train():
             loss_step += loss.data[0]
 
             if i % 100 == 0:
-                print("[%d / %d, %5d]  loss: %.3f" % (epoch,args.epochs,i,loss_step))
+                print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss_step))
                 loss_step = 0.0
 
+        if (epoch+1) % 10000 == 0:
+            torch.save({"net": net.state_dict()},args.checkpoint_path + "model_"+str(epoch+1)+".pt")
 
 if __name__ == '__main__':
     train()

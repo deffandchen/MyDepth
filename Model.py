@@ -1,6 +1,9 @@
-#
-#
-#
+#====================================================
+#  File Name   : Model.py
+#  Author      : deffand
+#  Date        : 2020/12/17
+#  Description :
+#====================================================
 
 import numpy as np
 import torch

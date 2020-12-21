@@ -1,8 +1,9 @@
-#
-# Author : deffand
-#
-# Monodepth
-#
+#====================================================
+#  File Name   : dataset.py
+#  Author      : deffand
+#  Date        : 2020/12/17
+#  Description :
+#====================================================
 
 from torch.utils.data.dataset import Dataset
 import numpy as np

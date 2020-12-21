@@ -1,3 +1,9 @@
+#====================================================
+#  File Name   : Net.py
+#  Author      : deffand
+#  Date        : 2020/12/17
+#  Description :
+#====================================================
 
 import torch
 import torch.nn as nn
