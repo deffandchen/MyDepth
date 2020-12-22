@@ -71,7 +71,7 @@ def train():
             loss = loss_func(data, out)
             loss.backward()
             optimizer.step()
-            loss_step += loss.data[0]
+            loss_step += loss.data.item()
 
             if i % 100 == 0:
                 print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss_step))

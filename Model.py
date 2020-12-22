@@ -11,16 +11,53 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+class SSIM(nn.Module):
+    """Layer to compute the SSIM loss between a pair of images
+    """
+    def __init__(self):
+        super(SSIM, self).__init__()
+        self.mu_x_pool   = nn.AvgPool2d(3, 1)
+        self.mu_y_pool   = nn.AvgPool2d(3, 1)
+        self.sig_x_pool  = nn.AvgPool2d(3, 1)
+        self.sig_y_pool  = nn.AvgPool2d(3, 1)
+        self.sig_xy_pool = nn.AvgPool2d(3, 1)
+
+        self.refl = nn.ReflectionPad2d(1)
+
+        self.C1 = 0.01 ** 2
+        self.C2 = 0.03 ** 2
+
+    def forward(self, x, y):
+        x = self.refl(x)
+        y = self.refl(y)
+
+        mu_x = self.mu_x_pool(x)
+        mu_y = self.mu_y_pool(y)
+
+        sigma_x  = self.sig_x_pool(x ** 2) - mu_x ** 2
+        sigma_y  = self.sig_y_pool(y ** 2) - mu_y ** 2
+        sigma_xy = self.sig_xy_pool(x * y) - mu_x * mu_y
+
+        SSIM_n = (2 * mu_x * mu_y + self.C1) * (2 * sigma_xy + self.C2)
+        SSIM_d = (mu_x ** 2 + mu_y ** 2 + self.C1) * (sigma_x + sigma_y + self.C2)
+
+        return torch.clamp((1 - SSIM_n / SSIM_d) / 2, 0, 1)
+
+
 class MyLoss(nn.Module):
     def __init__(self,args):
+        super(MyLoss,self).__init__()
         self.mode = args.mode
+        self.ssim = SSIM()
+        self.ssim.to(torch.device('cuda'))
+        self.args = args
 
     def gradient_x(self, img):
         gx = img[:, :, :-1, :] - img[:, :, 1:, :]
         return gx
 
     def gradient_y(self, img):
-        gy = img[:, :-1, :, :] - img[:, 1:, :, :]
+        gy = img[:, :, :, :-1] - img[:, :, :, 1:]
         return gy
 
     def upsample_nn(self, x, ratio):
@@ -46,24 +83,6 @@ class MyLoss(nn.Module):
 
     def generate_image_right(self, img, disp):
         return bilinear_sampler_1d_h(img, disp)
-
-    def SSIM(self, x, y):
-        C1 = 0.01 ** 2
-        C2 = 0.03 ** 2
-
-        mu_x = nn.functional.avg_pool2d(x, 3, 1, 'VALID')
-        mu_y = nn.functional.avg_pool2d(y, 3, 1, 'VALID')
-
-        sigma_x = nn.functional.avg_pool2d(x ** 2, 3, 1, 'VALID') - mu_x ** 2
-        sigma_y = nn.functional.avg_pool2d(y ** 2, 3, 1, 'VALID') - mu_y ** 2
-        sigma_xy = nn.functional.avg_pool2d(x * y, 3, 1, 'VALID') - mu_x * mu_y
-
-        SSIM_n = (2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)
-        SSIM_d = (mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x + sigma_y + C2)
-
-        SSIM = SSIM_n / SSIM_d
-
-        return torch.clamp((1 - SSIM) / 2, 0, 1)
 
     def get_disparity_smoothness(self, disp, pyramid):
         disp_gradients_x = [self.gradient_x(d) for d in disp]
@@ -122,17 +141,17 @@ class MyLoss(nn.Module):
         self.l1_reconstruction_loss_right = [torch.mean(l) for l in self.l1_right]
 
         # SSIM
-        self.ssim_left = [self.SSIM(self.left_est[i], self.left_pyramid[i]) for i in range(4)]
+        self.ssim_left = [self.ssim(self.left_est[i], self.left_pyramid[i]) for i in range(4)]
         self.ssim_loss_left = [torch.mean(s) for s in self.ssim_left]
-        self.ssim_right = [self.SSIM(self.right_est[i], self.right_pyramid[i]) for i in range(4)]
+        self.ssim_right = [self.ssim(self.right_est[i], self.right_pyramid[i]) for i in range(4)]
         self.ssim_loss_right = [torch.mean(s) for s in self.ssim_right]
 
         # WEIGTHED SUM
         self.image_loss_right = [
-            self.params.alpha_image_loss * self.ssim_loss_right[i] + (1 - self.params.alpha_image_loss) *
+            self.args.alpha_image_loss * self.ssim_loss_right[i] + (1 - self.args.alpha_image_loss) *
             self.l1_reconstruction_loss_right[i] for i in range(4)]
         self.image_loss_left = [
-            self.params.alpha_image_loss * self.ssim_loss_left[i] + (1 - self.params.alpha_image_loss) *
+            self.args.alpha_image_loss * self.ssim_loss_left[i] + (1 - self.args.alpha_image_loss) *
             self.l1_reconstruction_loss_left[i] for i in range(4)]
         self.image_loss = np.sum(self.image_loss_left + self.image_loss_right,axis=0)
 
@@ -149,7 +168,7 @@ class MyLoss(nn.Module):
         self.lr_loss = np.sum(self.lr_left_loss + self.lr_right_loss,axis=0)
 
         # TOTAL LOSS
-        self.total_loss = self.image_loss + self.params.disp_gradient_loss_weight * self.disp_gradient_loss + self.params.lr_loss_weight * self.lr_loss
+        self.total_loss = self.image_loss + self.args.disp_gradient_loss_weight * self.disp_gradient_loss + self.args.lr_loss_weight * self.lr_loss
 
 
     def forward(self,data,disp_list):
