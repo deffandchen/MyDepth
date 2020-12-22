@@ -5,6 +5,7 @@
 #  Description :
 #====================================================
 
+import os
 import argparse
 import torch
 from torch.utils.data import DataLoader
@@ -14,6 +15,8 @@ import torch.optim as optim
 from dataset import StereoDataset
 from Net import BasicBlock,MyNet
 from Model import MyLoss
+
+os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
@@ -25,7 +28,7 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=8)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
@@ -34,7 +37,7 @@ parser.add_argument('--alpha_image_loss',          type=float, help='weight betw
 parser.add_argument('--disp_gradient_loss_weight', type=float, help='disparity smoothness weigth', default=0.1)
 parser.add_argument('--do_stereo',                             help='if set, will train the stereo model', action='store_true')
 parser.add_argument('--wrap_mode',                 type=str,   help='bilinear sampler wrap mode, edge or border', default='border')
-parser.add_argument('--num_gpus',                  type=int,   help='number of GPUs to use for training', default=1)
+parser.add_argument('--num_gpus',                  type=int,   help='number of GPUs to use for training', default=2)
 parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=8)
 parser.add_argument('--output_directory',          type=str,   help='output directory for test disparities, if empty outputs to checkpoint folder', default='')
 parser.add_argument('--log_directory',             type=str,   help='directory to save checkpoints and summaries', default='')
@@ -54,6 +57,7 @@ def train():
     print('#training images: %d' % dataset_size)
 
     net = MyNet(args.mode,BasicBlock)
+    net = torch.nn.DataParallel(net).cuda()
     net.to(device)
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
