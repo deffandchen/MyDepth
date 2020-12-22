@@ -78,7 +78,7 @@ def train():
                 loss_step = 0.0
 
         if (epoch+1) % 10000 == 0:
-            torch.save({"net": net.state_dict()},args.checkpoint_path + "model_"+str(epoch+1)+".pt")
+            torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
 
 if __name__ == '__main__':
     train()
