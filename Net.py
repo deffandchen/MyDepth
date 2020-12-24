@@ -8,6 +8,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from Model import MyLoss
+from torch.autograd import Variable
 
 class BasicBlock(nn.Module):
 
@@ -43,9 +45,10 @@ class BasicBlock(nn.Module):
 
 class MyNet(nn.Module):
 
-    def __init__(self, mode, block):
+    def __init__(self, args, block):
         super(MyNet, self).__init__()
-        self.mode = mode
+        self.mode = args.mode
+        self.MyLoss = MyLoss(args)
         self.inplanes = 64
         self.conv_pre = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
@@ -124,8 +127,9 @@ class MyNet(nn.Module):
         )
         return conv
 
-    def forward(self, x):
+    def forward(self, data):
         #encoder
+        x = Variable(data['left_img'])
         conv1 = self.conv_pre(x)
         bn1 = self.bn1(conv1)
         relu = self.relu(bn1)
@@ -182,5 +186,8 @@ class MyNet(nn.Module):
         #concat1 = torch.cat([upconv1], 1) # 16+ 32
         iconv1 = self.conv1(upconv1)
         self.disp1 = 0.3 * self.get_disp1(iconv1)        #16
-        return [self.disp1, self.disp2, self.disp3, self.disp4]
+        disp_list =  [self.disp1, self.disp2, self.disp3, self.disp4]
+
+        loss = self.MyLoss(data, disp_list)
+        return loss
 

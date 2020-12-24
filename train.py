@@ -28,7 +28,7 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=16)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
@@ -56,24 +56,24 @@ def train():
     dataset_size = len(train_data)
     print('#training images: %d' % dataset_size)
 
-    net = MyNet(args.mode,BasicBlock)
+    net = MyNet(args,BasicBlock)
     net = torch.nn.DataParallel(net).cuda()
     net.to(device)
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
         net.load_state_dict(state_dict['net'])
 
-    loss_func = MyLoss(args)
+    #loss_func = MyLoss(args)
     #loss_func = torch.nn.DataParallel(loss_func)
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
 
     for epoch in range(args.start_epoch,args.epochs):
         loss_step = 0.0
         for i, data in enumerate(train_loader):
-            left = Variable(data['left_img'])
+
             optimizer.zero_grad()
-            out = net(left)
-            loss = loss_func(data, out)
+            loss = net(data)
+            loss = loss.mean()
             loss.backward()
             optimizer.step()
             loss_step += loss.item()
