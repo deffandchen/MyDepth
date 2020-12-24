@@ -28,7 +28,7 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=16)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
@@ -64,6 +64,7 @@ def train():
         net.load_state_dict(state_dict['net'])
 
     loss_func = MyLoss(args)
+    #loss_func = torch.nn.DataParallel(loss_func)
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
 
     for epoch in range(args.start_epoch,args.epochs):
@@ -75,14 +76,13 @@ def train():
             loss = loss_func(data, out)
             loss.backward()
             optimizer.step()
-            loss_step += loss.data.item()
+            loss_step += loss.item()
 
-            if i % 100 == 0:
-                print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss_step))
+            if (i + 1) % 100 == 0:
+                print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss_step / 100.0))
                 loss_step = 0.0
 
-        if (epoch+1) % 10000 == 0:
-            torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
+        torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
 
 if __name__ == '__main__':
     train()
