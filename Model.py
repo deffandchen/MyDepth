@@ -93,12 +93,27 @@ class MyLoss(nn.Module):
         image_gradients_x = [self.gradient_x(img) for img in pyramid]
         image_gradients_y = [self.gradient_y(img) for img in pyramid]
 
-        weights_x = [torch.exp(-torch.mean(torch.abs(g), 3, keepdim=True)) for g in image_gradients_x]
-        weights_y = [torch.exp(-torch.mean(torch.abs(g), 3, keepdim=True)) for g in image_gradients_y]
+        weights_x = [torch.exp(-torch.mean(torch.abs(g), 1, keepdim=True)) for g in image_gradients_x]
+        weights_y = [torch.exp(-torch.mean(torch.abs(g), 1, keepdim=True)) for g in image_gradients_y]
 
         smoothness_x = [disp_gradients_x[i] * weights_x[i] for i in range(4)]
         smoothness_y = [disp_gradients_y[i] * weights_y[i] for i in range(4)]
         return smoothness_x + smoothness_y
+
+    def get_smooth_loss(self,disp, pyramid):
+        """Computes the smoothness loss for a disparity image
+        The color image is used for edge-aware smoothness
+        """
+        grad_disp_x = [torch.abs(d[:, :, :, :-1] - d[:, :, :, 1:]) for d in disp]
+        grad_disp_y = [torch.abs(d[:, :, :-1, :] - d[:, :, 1:, :]) for d in disp]
+
+        grad_img_x = [torch.mean(torch.abs(img[:, :, :, :-1] - img[:, :, :, 1:]), 1, keepdim=True) for img in pyramid]
+        grad_img_y = [torch.mean(torch.abs(img[:, :, :-1, :] - img[:, :, 1:, :]), 1, keepdim=True) for img in pyramid]
+
+        grad_disp_x *= torch.exp(-grad_img_x)
+        grad_disp_y *= torch.exp(-grad_img_y)
+
+        return grad_disp_x.mean() + grad_disp_y.mean()
 
     def build_model(self, data):
         self.left_pyramid = self.scale_pyramid(Variable(data['left_img']), 4)
@@ -143,9 +158,9 @@ class MyLoss(nn.Module):
         self.l1_reconstruction_loss_right = [torch.mean(l) for l in self.l1_right]
 
         # SSIM
-        self.ssim_left = [self.ssim(self.left_est[i], self.left_pyramid[i]) for i in range(4)]
+        self.ssim_left = [self.ssim(self.left_est[i], self.left_pyramid[i]).mean(1,True) for i in range(4)]
         self.ssim_loss_left = [torch.mean(s) for s in self.ssim_left]
-        self.ssim_right = [self.ssim(self.right_est[i], self.right_pyramid[i]) for i in range(4)]
+        self.ssim_right = [self.ssim(self.right_est[i], self.right_pyramid[i]).mean(1,True) for i in range(4)]
         self.ssim_loss_right = [torch.mean(s) for s in self.ssim_right]
 
         # WEIGTHED SUM
