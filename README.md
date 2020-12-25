@@ -3,8 +3,25 @@ Depth Estimation
 
 2020-12-19  complete Network  Model
 
-### TODO
+2020-12-24   complete project。
 
-Need to complete trian().
 
-Modify input params of Net.
+
+### Note
+
+#### 1、 Loss
+
+		#### generate_image
+
+
+
+#### L-R Consistency
+
+
+
+#### Disparity smoothness
+
+
+
+
+
