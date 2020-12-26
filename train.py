@@ -28,7 +28,7 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=16)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-3)
@@ -58,7 +58,7 @@ def train():
 
     net = MyNet(args,BasicBlock)
     net = torch.nn.DataParallel(net).cuda()
-    net.to(device)
+    #net.to(device)
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
         net.load_state_dict(state_dict['net'])
@@ -76,10 +76,10 @@ def train():
             loss = loss.mean()
             loss.backward()
             optimizer.step()
-            loss_step += loss.item()
+            #loss_step += loss.item()
 
-            if (i + 1) % 100 == 0:
-                print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss_step / 100.0))
+            if (i) % 100 == 0:
+                print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss.item()))
                 loss_step = 0.0
 
         torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")

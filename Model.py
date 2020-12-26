@@ -53,11 +53,11 @@ class MyLoss(nn.Module):
         self.args = args
 
     def gradient_x(self, img):
-        gx = img[:, :, :-1, :] - img[:, :, 1:, :]
+        gx = img[:, :, :, :-1] - img[:, :, :, 1:]
         return gx
 
     def gradient_y(self, img):
-        gy = img[:, :, :, :-1] - img[:, :, :, 1:]
+        gy = img[:, :, :-1, :] - img[:, :, 1:, :]
         return gy
 
     def upsample_nn(self, x, ratio):
@@ -75,7 +75,7 @@ class MyLoss(nn.Module):
             ratio = 2 ** (i + 1)
             nh = h // ratio
             nw = w // ratio
-            scaled_imgs.append(nn.functional.upsample(img, [nh, nw], mode='nearest'))
+            scaled_imgs.append(nn.functional.interpolate(img, size=[nh, nw], mode='nearest'))
         return scaled_imgs
 
     def generate_image_left(self, img, disp):
@@ -125,8 +125,8 @@ class MyLoss(nn.Module):
         #with tf.variable_scope('disparities'):
 
         self.disp_est = [disp_list[0], disp_list[1], disp_list[2], disp_list[3]]
-        self.disp_left_est = [torch.unsqueeze(d[:,0, :, :], 1) for d in self.disp_est]
-        self.disp_right_est = [torch.unsqueeze(d[:,1, :, :], 1) for d in self.disp_est]
+        self.disp_left_est = [torch.unsqueeze(d[:, 0, :, :], 1) for d in self.disp_est]
+        self.disp_right_est = [torch.unsqueeze(d[:, 1, :, :], 1) for d in self.disp_est]
 
         if self.mode == 'test':
             return
@@ -186,7 +186,7 @@ class MyLoss(nn.Module):
 
         # TOTAL LOSS
         self.total_loss = self.image_loss + self.args.disp_gradient_loss_weight * self.disp_gradient_loss + self.args.lr_loss_weight * self.lr_loss
-
+        print(self.image_loss, self.disp_gradient_loss, self.lr_loss)
 
     def forward(self,data,disp_list):
         self.build_model(data)
