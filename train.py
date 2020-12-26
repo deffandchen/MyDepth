@@ -31,7 +31,7 @@ parser.add_argument('--input_width',               type=int,   help='input width
 parser.add_argument('--batch_size',                type=int,   help='batch size', default=16)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
-parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-3)
+parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=5e-4)
 parser.add_argument('--lr_loss_weight',            type=float, help='left-right consistency weight', default=1.0)
 parser.add_argument('--alpha_image_loss',          type=float, help='weight between SSIM and L1 in the image loss', default=0.85)
 parser.add_argument('--disp_gradient_loss_weight', type=float, help='disparity smoothness weigth', default=0.1)

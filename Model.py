@@ -186,7 +186,7 @@ class MyLoss(nn.Module):
 
         # TOTAL LOSS
         self.total_loss = self.image_loss + self.args.disp_gradient_loss_weight * self.disp_gradient_loss + self.args.lr_loss_weight * self.lr_loss
-        print(self.image_loss, self.disp_gradient_loss, self.lr_loss)
+
 
     def forward(self,data,disp_list):
         self.build_model(data)
