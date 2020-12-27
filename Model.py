@@ -60,6 +60,24 @@ class MyLoss(nn.Module):
         gy = img[:, :, :-1, :] - img[:, :, 1:, :]
         return gy
 
+    def apply_disparity(self, img, disp):
+        batch_size, _, height, width = img.size()
+
+        # Original coordinates of pixels
+        x_base = torch.linspace(0, 1, width).repeat(batch_size,
+                    height, 1).type_as(img)
+        y_base = torch.linspace(0, 1, height).repeat(batch_size,
+                    width, 1).transpose(1, 2).type_as(img)
+
+        # Apply shift in X direction
+        x_shifts = disp[:, 0, :, :]  # Disparity is passed in NCHW format with 1 channel
+        flow_field = torch.stack((x_base + x_shifts, y_base), dim=3)
+        # In grid_sample coordinates are assumed to be between -1 and 1
+        output = F.grid_sample(img, 2*flow_field - 1, mode='bilinear',
+                               padding_mode='zeros')
+
+        return output
+
     def upsample_nn(self, x, ratio):
         s = x.size()
         h = int(s[2])
@@ -80,11 +98,11 @@ class MyLoss(nn.Module):
 
     def generate_image_left(self, img, disp):
         #return bilinear_sampler_1d_h(img, -disp)
-        return apply_disparity(img, -disp)
+        return self.apply_disparity(img, -disp)
 
     def generate_image_right(self, img, disp):
         #return bilinear_sampler_1d_h(img, disp)
-        return apply_disparity(img,disp)
+        return self.apply_disparity(img,disp)
 
     def get_disparity_smoothness(self, disp, pyramid):
         disp_gradients_x = [self.gradient_x(d) for d in disp]
