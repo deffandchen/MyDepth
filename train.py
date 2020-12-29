@@ -16,7 +16,9 @@ from dataset import StereoDataset
 from Net import BasicBlock,MyNet
 from Model import MyLoss
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
+#/media/lab326/9a55ef08-6e15-4a6e-b1c5-9f20232c2f002/lab326/cdf
+
+os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
@@ -28,7 +30,7 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=16)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=5e-4)
@@ -41,11 +43,12 @@ parser.add_argument('--num_gpus',                  type=int,   help='number of G
 parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=8)
 parser.add_argument('--output_directory',          type=str,   help='output directory for test disparities, if empty outputs to checkpoint folder', default='')
 parser.add_argument('--log_directory',             type=str,   help='directory to save checkpoints and summaries', default='')
-parser.add_argument('--checkpoint_path',           type=str,   help='path to a specific checkpoint to load', default='')
+parser.add_argument('--checkpoint_path',           type=str,   help='path to a specific checkpoint to load', default="")
 parser.add_argument('--retrain',                               help='if used with checkpoint_path, will restart training from step zero', action='store_true')
 parser.add_argument('--full_summary',                          help='if set, will keep more data for each summary. Warning: the file can become very large', action='store_true')
 
 args = parser.parse_args()
+
 
 #TODO：
 def train():
@@ -59,9 +62,10 @@ def train():
     net = MyNet(args,BasicBlock)
     net = torch.nn.DataParallel(net).cuda()
     #net.to(device)
-    if args.checkpoint_path != '':
-        state_dict = torch.load(args.checkpoint_path)
-        net.load_state_dict(state_dict['net'])
+    if args.checkpoint_path != "":
+        pass
+        #state_dict = torch.load(args.checkpoint_path)
+        #net.load_state_dict(state_dict['net'])
 
     #loss_func = MyLoss(args)
     #loss_func = torch.nn.DataParallel(loss_func)
