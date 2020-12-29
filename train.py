@@ -61,11 +61,7 @@ def train():
     print('#training images: %d' % dataset_size)
 
     net = MyNet(args,BasicBlock)
-
-    if args.num_gpus > 1:
-        net = torch.nn.DataParallel(net).cuda()
-    else:
-        net.to(device)
+    net = torch.nn.DataParallel(net).cuda()
 
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
