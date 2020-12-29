@@ -6,6 +6,7 @@
 #====================================================
 
 import os
+import sys
 import argparse
 import torch
 from torch.utils.data import DataLoader
@@ -57,8 +58,12 @@ def train():
     print('#training images: %d' % dataset_size)
 
     net = MyNet(args,BasicBlock)
-    net = torch.nn.DataParallel(net).cuda()
-    #net.to(device)
+
+    if args.num_gpus > 1:
+        net = torch.nn.DataParallel(net).cuda()
+    else:
+        net.to(device)
+
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
         net.load_state_dict(state_dict['net'])
@@ -83,6 +88,29 @@ def train():
                 loss_step = 0.0
 
         torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
+
+
+def test():
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    val_data = StereoDataset(args)  # create dataloader
+    val_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True)  # , num_workers=1)
+    dataset_size = len(val_data)
+    print('#training images: %d' % dataset_size)
+
+    net = MyNet(args,BasicBlock)
+    if args.num_gpus > 1:
+        net = torch.nn.DataParallel(net).cuda()
+    else:
+        net.to(device)
+    if args.checkpoint_path != '':
+        state_dict = torch.load(args.checkpoint_path)
+        net.load_state_dict(state_dict['net'])
+    else:
+        print("please input checkpoint path for test!")
+        sys.exit(0)
+
+
 
 if __name__ == '__main__':
     train()
