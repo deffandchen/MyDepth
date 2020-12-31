@@ -16,10 +16,11 @@ import torch.optim as optim
 from dataset import StereoDataset
 from Net import BasicBlock,MyNet
 from Model import MyLoss
+from testNet import Resnet50_md
 
 #/media/lab326/9a55ef08-6e15-4a6e-b1c5-9f20232c2f002/lab326/cdf
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
@@ -71,13 +72,9 @@ def train():
         state_dict = torch.load(args.checkpoint_path)
         net.load_state_dict(state_dict['net'])
 
-
-    #loss_func = MyLoss(args)
-    #loss_func = torch.nn.DataParallel(loss_func)
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
 
     for epoch in range(args.start_epoch,args.epochs):
-        loss_step = 0.0
         for i, data in enumerate(train_loader):
 
             optimizer.zero_grad()
@@ -85,11 +82,9 @@ def train():
             loss = loss.mean()
             loss.backward()
             optimizer.step()
-            #loss_step += loss.item()
 
             if (i) % 100 == 0:
                 print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss.item()))
-                loss_step = 0.0
 
         torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
 
@@ -113,8 +108,6 @@ def test():
     else:
         print("please input checkpoint path for test!")
         sys.exit(0)
-
-
 
 if __name__ == '__main__':
     train()

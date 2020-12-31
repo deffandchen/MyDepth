@@ -82,7 +82,7 @@ class MyLoss(nn.Module):
         s = x.size()
         h = int(s[2])
         w = int(s[3])
-        return nn.functional.upsample(x, [h*ratio, w*ratio], mode='nearest')
+        return nn.functional.upsample(x, [h*ratio, w*ratio], mode='bilinear')
 
     def scale_pyramid(self, img, num_scales):
         scaled_imgs = [img]
@@ -93,7 +93,7 @@ class MyLoss(nn.Module):
             ratio = 2 ** (i + 1)
             nh = h // ratio
             nw = w // ratio
-            scaled_imgs.append(nn.functional.interpolate(img, size=[nh, nw], mode='nearest'))
+            scaled_imgs.append(nn.functional.interpolate(img, size=[nh, nw], mode='bilinear'))
         return scaled_imgs
 
     def generate_image_left(self, img, disp):

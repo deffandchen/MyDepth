@@ -48,7 +48,7 @@ class MyNet(nn.Module):
     def __init__(self, args, block):
         super(MyNet, self).__init__()
         self.mode = args.mode
-        self.MyLoss = MonodepthLoss
+        self.MyLoss = MyLoss(args)
         self.inplanes = 64
         self.conv_pre = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
@@ -188,6 +188,6 @@ class MyNet(nn.Module):
         self.disp1 = 0.3 * self.get_disp1(iconv1)        #16
         disp_list =  [self.disp1, self.disp2, self.disp3, self.disp4]
 
-        loss = self.MyLoss(disp_list,[data['left_img'],data['right_img']])
+        loss = self.MyLoss(data, disp_list)
         return loss
 
