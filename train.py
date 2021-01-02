@@ -15,6 +15,7 @@ import torch.optim as optim
 
 from dataset import StereoDataset
 from Net import BasicBlock,MyNet
+from Senet import SENet,SEBottleneck
 from Model import MyLoss
 from testNet import Resnet50_md
 
@@ -61,8 +62,8 @@ def train():
     dataset_size = len(train_data)
     print('#training images: %d' % dataset_size)
 
-    net = MyNet(args,BasicBlock)
-
+    #net = MyNet(args,BasicBlock)
+    net = SENet(args,SEBottleneck)
     if args.num_gpus > 1:
         net = torch.nn.DataParallel(net).cuda()
     else:
