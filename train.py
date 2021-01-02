@@ -21,7 +21,7 @@ from testNet import Resnet50_md
 
 #/media/lab326/9a55ef08-6e15-4a6e-b1c5-9f20232c2f002/lab326/cdf
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
@@ -33,10 +33,10 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=64)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
-parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=5e-4)
+parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
 parser.add_argument('--lr_loss_weight',            type=float, help='left-right consistency weight', default=1.0)
 parser.add_argument('--alpha_image_loss',          type=float, help='weight between SSIM and L1 in the image loss', default=0.85)
 parser.add_argument('--disp_gradient_loss_weight', type=float, help='disparity smoothness weigth', default=0.1)
@@ -64,6 +64,7 @@ def train():
 
     #net = MyNet(args,BasicBlock)
     net = SENet(args,SEBottleneck)
+    #net = Resnet50_md(3,args)
     if args.num_gpus > 1:
         net = torch.nn.DataParallel(net).cuda()
     else:
