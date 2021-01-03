@@ -75,14 +75,14 @@ class get_disp(nn.Module):
         super(get_disp, self).__init__()
         self.conv1 = nn.Conv2d(num_in_layers, 2, kernel_size=3, stride=1)
         self.normalize = nn.BatchNorm2d(2)
-        #self.sigmoid = torch.nn.Sigmoid()
+        self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, x):
         p = 1
         p2d = (p, p, p, p)
         x = self.conv1(F.pad(x, p2d))
         x = self.normalize(x)
-        return 0.3 * x
+        return 0.3 * self.sigmoid(x)
 
 class MyNet(nn.Module):
 
@@ -123,27 +123,6 @@ class MyNet(nn.Module):
         self.iconv1 = Conv(16 + 2, 16, 3, 1)
         self.disp1_layer = get_disp(16)
 
-        '''
-        self.upconv6 = self.upconv(512, 3, 1, 1)
-        self.upconv5 = self.upconv(256, 3, 1, 3)
-        self.upconv4 = self.upconv(128, 3, 1, 3)
-        self.upconv3 = self.upconv(64, 3, 1, 3)
-        self.upconv2 = self.upconv(32, 3, 1, 3)
-        self.upconv1 = self.upconv(16, 3, 1, 3)
-
-        self.conv6 = self.conv(512+256, 512, 3, 1)
-        self.conv5 = self.conv(256+128, 256, 3, 1)
-        self.conv4 = self.conv(128+64, 128, 3, 1)
-        self.conv3 = self.conv(64+64, 64, 3, 1)
-        self.conv2 = self.conv(32+64, 32, 3, 1)
-        self.conv1 = self.conv(16, 16, 3, 1)
-        
-        
-        self.get_disp4 = self.disp_block(128)
-        self.get_disp3 = self.disp_block(64)
-        self.get_disp2 = self.disp_block(32)
-        self.get_disp1 = self.disp_block(16)
-        '''
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes:
@@ -250,48 +229,3 @@ class MyNet(nn.Module):
         # loss = self.MyLoss(disp_list, [Variable(data['left_img']), Variable(data['right_img'])])
         loss = self.MyLoss(data, disp_list)
         return loss
-        '''
-        upsample6 = self.upsample(conv5,2)
-        upconv6 = self.upconv6(upsample6)  # H/32
-        concat6 = torch.cat([upconv6, skip5], 1)   #512+256
-        #self.inplanes = concat6.size()[1]
-        iconv6 = self.conv6(concat6)         #512
-
-        upsample5 = self.upsample(iconv6, 2)
-        upconv5 = self.upconv5(upsample5)  # H/16
-        concat5 = torch.cat([upconv5, skip4], 1)    #256+128
-        iconv5 = self.conv5(concat5)          #256
-
-        upsample4 = self.upsample(iconv5, 2)
-        upconv4 = self.upconv4(upsample4)  # H/8
-        concat4 = torch.cat([upconv4, skip3], 1)  #128+64
-        iconv4 = self.conv4(concat4)           # 128
-        self.disp4 = 0.3 * self.get_disp4(iconv4)     # 128
-        udisp4 = self.upsample(self.disp4, 2)
-
-        upsample3 = self.upsample(iconv4,2)
-        upconv3 = self.upconv3(upsample3)  # H/4
-        #concat3 = torch.cat([upconv3, skip2, udisp4], 1)   #64+64 + 128
-        concat3 = torch.cat([upconv3, skip2], 1)  # 64+64
-        iconv3 = self.conv3(concat3)                    #64
-        self.disp3 = 0.3 * self.get_disp3(iconv3)            #64
-        udisp3 = self.upsample(self.disp3, 2)
-
-        upsample2 = self.upsample(iconv3,2)
-        upconv2 = self.upconv2(upsample2)  # H/2   32
-        concat2 = torch.cat([upconv2, skip1], 1)    # 32+64
-        iconv2 = self.conv2(concat2)
-        self.disp2 = 0.3 * self.get_disp2(iconv2)          #32
-        udisp2 = self.upsample(self.disp2, 2)
-
-        upsample1 = self.upsample(iconv2,2)
-        upconv1 = self.upconv1(upsample1)  # H   16
-        #concat1 = torch.cat([upconv1], 1) # 16+ 32
-        iconv1 = self.conv1(upconv1)
-        self.disp1 = 0.3 * self.get_disp1(iconv1)        #16
-        disp_list =  [self.disp1, self.disp2, self.disp3, self.disp4]
-
-        loss = self.MyLoss(data, disp_list)
-        return loss
-        '''
-

@@ -121,6 +121,7 @@ class get_disp(nn.Module):
 class SENet(nn.Module):
 
     def __init__(self, args,block):
+        print("senet")
         self.inplanes = 64
         super(SENet, self).__init__()
         self.MyLoss = MyLoss(args)
