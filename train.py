@@ -8,6 +8,7 @@
 import os
 import sys
 import argparse
+import time
 import torch
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
@@ -21,7 +22,7 @@ from testNet import Resnet50_md
 
 #/media/lab326/9a55ef08-6e15-4a6e-b1c5-9f20232c2f002/lab326/cdf
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
+#os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
@@ -33,10 +34,10 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=64)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
-parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
+parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-3)
 parser.add_argument('--lr_loss_weight',            type=float, help='left-right consistency weight', default=1.0)
 parser.add_argument('--alpha_image_loss',          type=float, help='weight between SSIM and L1 in the image loss', default=0.85)
 parser.add_argument('--disp_gradient_loss_weight', type=float, help='disparity smoothness weigth', default=0.1)
@@ -51,6 +52,19 @@ parser.add_argument('--retrain',                               help='if used wit
 parser.add_argument('--full_summary',                          help='if set, will keep more data for each summary. Warning: the file can become very large', action='store_true')
 
 args = parser.parse_args()
+
+def adjust_learning_rate(optimizer, epoch, learning_rate):
+    """Sets the learning rate to the initial LR\
+        decayed by 2 every 10 epochs after 30 epoches"""
+
+    if epoch >= 20 and epoch < 40:
+        lr = learning_rate / 10.0
+    elif epoch >= 40:
+        lr = learning_rate / 10.0
+    else:
+        lr = learning_rate
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 #TODO：
@@ -77,17 +91,22 @@ def train():
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
 
     for epoch in range(args.start_epoch,args.epochs):
+        adjust_learning_rate(optimizer,epoch,args.learning_rate)
+        start_time = time.time()
+        train_loss = 0.0
         for i, data in enumerate(train_loader):
-
             optimizer.zero_grad()
             loss = net(data)
             loss = loss.mean()
             loss.backward()
             optimizer.step()
 
+            train_loss += loss.item()
+
             if (i) % 100 == 0:
                 print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss.item()))
-
+        print('Epoch:', epoch + 1, 'train_loss:', train_loss , 'time:',
+            round(time.time() - start_time, 3), 's')
         torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
 
 
