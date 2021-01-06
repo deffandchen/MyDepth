@@ -175,6 +175,10 @@ class MyLoss(nn.Module):
         self.l1_right = [torch.abs(self.right_pred[i] - self.right_pyramid[i]) for i in range(4)]
         self.l1_reconstruction_loss_right = [torch.mean(l) for l in self.l1_right]
 
+
+        self.left_pix_res = [self.l1_left[i] / self.l1_reconstruction_loss_left[i] for i in range(4)]
+        self.right_pix_res = [self.l1_right[i] / self.l1_reconstruction_loss_right[i] for i in range(4)]
+
         # SSIM
         self.ssim_left = [self.ssim(self.left_pred[i], self.left_pyramid[i]).mean(1, True) for i in range(4)]
         self.ssim_loss_left = [torch.mean(s) for s in self.ssim_left]

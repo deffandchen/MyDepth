@@ -57,9 +57,9 @@ def adjust_learning_rate(optimizer, epoch, learning_rate):
     """Sets the learning rate to the initial LR\
         decayed by 2 every 10 epochs after 30 epoches"""
 
-    if epoch >= 20 and epoch < 40:
+    if epoch >= 30 and epoch < 50:
         lr = learning_rate / 10.0
-    elif epoch >= 40:
+    elif epoch >= 70:
         lr = learning_rate / 10.0
     else:
         lr = learning_rate
@@ -74,6 +74,7 @@ def train():
     train_data = StereoDataset(args)  # create dataloader
     train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)  # , num_workers=1)
     dataset_size = len(train_data)
+    iter = dataset_size // args.batch_size
     print('#training images: %d' % dataset_size)
 
     #net = MyNet(args,BasicBlock)
@@ -105,7 +106,7 @@ def train():
 
             if (i) % 100 == 0:
                 print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss.item()))
-        print('Epoch:', epoch + 1, 'train_loss:', train_loss , 'time:',
+        print('Epoch:', epoch + 1, 'train_loss:', train_loss / iter, 'time:',
             round(time.time() - start_time, 3), 's')
         torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
 
