@@ -27,7 +27,7 @@ from testNet import Resnet50_md
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
-parser.add_argument('--mode',                      type=str,   help='train or test', default='train')
+parser.add_argument('--mode',                      type=str,   help='train or test', default='test')
 parser.add_argument('--model_name',                type=str,   help='model name', default='monodepth')
 parser.add_argument('--encoder',                   type=str,   help='type of encoder, vgg or resnet50', default='vgg')
 parser.add_argument('--dataset',                   type=str,   help='dataset to train on, kitti, or cityscapes', default='kitti')
@@ -96,6 +96,8 @@ def train():
     else:
         net.to(device)
 
+    net.train()
+
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
         net.load_state_dict(state_dict['net'])
@@ -128,10 +130,12 @@ def test():
     val_data = StereoDataset(args)  # create dataloader
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False)  # , num_workers=1)
     dataset_size = len(val_data)
-    print('#training images: %d' % dataset_size)
+    print('test images: %d' % dataset_size)
 
-    net = MyNet(args,BasicBlock)
-    net.to(device)
+    #net = MyNet(args,BasicBlock)
+    net = SENet(args, SEBottleneck)
+    net = torch.nn.DataParallel(net).cuda()
+    net.eval()
 
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
@@ -150,18 +154,22 @@ def test():
     with torch.no_grad():
         for (i, data) in enumerate(val_loader):
             # Get the inputs
-            left = data['left_img']
+            #left = data['left_img']
             # Do a forward pass
-            disps = net(left)
-            disp = disps[0][:, 0, :, :].unsqueeze(1)
+            disps = net(data)
+            disp = disps[:, 0, :, :].unsqueeze(1)
             disparities[i] = disp[0].squeeze().cpu().numpy()
-            disparities_pp[i] = post_process_disparity(disps[0][:, 0, :, :] \
-                                       .cpu().numpy())
+            #disparities_pp[i] = post_process_disparity(disps[0][:, 0, :, :] \
+            #                           .cpu().numpy())
+            print("test: ",i)
 
     np.save(args.output_directory + '/disparities.npy', disparities)
-    np.save(args.output_directory + '/disparities_pp.npy', disparities_pp)
+    #np.save(args.output_directory + '/disparities_pp.npy', disparities_pp)
     print('Finished Testing')
 
 if __name__ == '__main__':
-    train()
+    if args.mode == "train":
+        train()
+    else:
+        test()
 

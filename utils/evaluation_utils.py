@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-import cv, cv2
+import cv2
 from collections import Counter
 import pickle
 
@@ -35,7 +35,7 @@ width_to_focal[1238] = 718.3351
 def load_gt_disp_kitti(path):
     gt_disparities = []
     for i in range(200):
-        disp = cv2.imread(path + "/training/disp_noc_0/" + str(i).zfill(6) + "_10.png", -1)
+        disp = cv2.imread(path + "/training/disp_noc_0/" + str(i).zfill(6) + "_10.jpg", -1)
         disp = disp.astype(np.float32) / 256
         gt_disparities.append(disp)
     return gt_disparities
@@ -101,7 +101,7 @@ def read_file_data(files, data_root):
         else:
             num_probs += 1
             print('{} missing'.format(data_root + im))
-    print num_probs, 'files missing'
+    print (num_probs, 'files missing')
 
     return gt_files, gt_calib, im_sizes, im_files, cams
 
