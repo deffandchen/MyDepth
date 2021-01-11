@@ -9,6 +9,7 @@ import os
 import sys
 import argparse
 import time
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
@@ -53,11 +54,22 @@ parser.add_argument('--full_summary',                          help='if set, wil
 
 args = parser.parse_args()
 
+def post_process_disparity(disp):
+    (_, h, w) = disp.shape
+    l_disp = disp[0, :, :]
+    r_disp = np.fliplr(disp[1, :, :])
+    m_disp = 0.5 * (l_disp + r_disp)
+    (l, _) = np.meshgrid(np.linspace(0, 1, w), np.linspace(0, 1, h))
+    l_mask = 1.0 - np.clip(20 * (l - 0.05), 0, 1)
+    r_mask = np.fliplr(l_mask)
+    return r_mask * l_disp + l_mask * r_disp + (1.0 - l_mask - r_mask) * m_disp
+
+
 def adjust_learning_rate(optimizer, epoch, learning_rate):
     """Sets the learning rate to the initial LR\
         decayed by 2 every 10 epochs after 30 epoches"""
 
-    if epoch >= 30 and epoch < 50:
+    if epoch >= 40 and epoch < 70:
         lr = learning_rate / 10.0
     elif epoch >= 70:
         lr = learning_rate / 10.0
@@ -65,7 +77,6 @@ def adjust_learning_rate(optimizer, epoch, learning_rate):
         lr = learning_rate
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-
 
 #TODO：
 def train():
@@ -115,21 +126,41 @@ def test():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     val_data = StereoDataset(args)  # create dataloader
-    val_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True)  # , num_workers=1)
+    val_loader = DataLoader(val_data, batch_size=1, shuffle=False)  # , num_workers=1)
     dataset_size = len(val_data)
     print('#training images: %d' % dataset_size)
 
     net = MyNet(args,BasicBlock)
-    if args.num_gpus > 1:
-        net = torch.nn.DataParallel(net).cuda()
-    else:
-        net.to(device)
+    net.to(device)
+
     if args.checkpoint_path != '':
         state_dict = torch.load(args.checkpoint_path)
         net.load_state_dict(state_dict['net'])
     else:
         print("please input checkpoint path for test!")
         sys.exit(0)
+
+    disparities = np.zeros((dataset_size,
+                            args.input_height, args.input_width),
+                           dtype=np.float32)
+    disparities_pp = np.zeros((dataset_size,
+                               args.input_height, args.input_width),
+                              dtype=np.float32)
+
+    with torch.no_grad():
+        for (i, data) in enumerate(val_loader):
+            # Get the inputs
+            left = data['left_img']
+            # Do a forward pass
+            disps = net(left)
+            disp = disps[0][:, 0, :, :].unsqueeze(1)
+            disparities[i] = disp[0].squeeze().cpu().numpy()
+            disparities_pp[i] = post_process_disparity(disps[0][:, 0, :, :] \
+                                       .cpu().numpy())
+
+    np.save(args.output_directory + '/disparities.npy', disparities)
+    np.save(args.output_directory + '/disparities_pp.npy', disparities_pp)
+    print('Finished Testing')
 
 if __name__ == '__main__':
     train()

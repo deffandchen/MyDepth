@@ -175,9 +175,14 @@ class MyLoss(nn.Module):
         self.l1_right = [torch.abs(self.right_pred[i] - self.right_pyramid[i]) for i in range(4)]
         self.l1_reconstruction_loss_right = [torch.mean(l) for l in self.l1_right]
 
-
+        #adaptive weight
         self.left_pix_res = [self.l1_left[i] / self.l1_reconstruction_loss_left[i] for i in range(4)]
         self.right_pix_res = [self.l1_right[i] / self.l1_reconstruction_loss_right[i] for i in range(4)]
+
+        c = 5.0
+        self.left_res_weight = [torch.exp(c * (1 - self.left_pix_res[i])) for i in range(4)]
+        self.right_res_weight = [torch.exp(c * (1 - self.right_pix_res[i])) for i in range(4)]
+
 
         # SSIM
         self.ssim_left = [self.ssim(self.left_pred[i], self.left_pyramid[i]).mean(1, True) for i in range(4)]
@@ -200,9 +205,9 @@ class MyLoss(nn.Module):
         self.disp_gradient_loss = np.sum(self.disp_left_loss + self.disp_right_loss,axis=0)
 
         # LR CONSISTENCY
-        self.lr_left_loss = [torch.mean(torch.abs(self.disp_right_to_left[i] - self.disp_left_pred[i])) for i in
+        self.lr_left_loss = [torch.mean(torch.mul(self.left_res_weight[i], torch.abs(self.disp_right_to_left[i] - self.disp_left_pred[i]))) for i in
                              range(4)]
-        self.lr_right_loss = [torch.mean(torch.abs(self.disp_left_to_right[i] - self.disp_right_pred[i])) for i in
+        self.lr_right_loss = [torch.mean(torch.mul(self.right_res_weight[i], torch.abs(self.disp_left_to_right[i] - self.disp_right_pred[i]))) for i in
                               range(4)]
         self.lr_loss = np.sum(self.lr_left_loss + self.lr_right_loss,axis=0)
 

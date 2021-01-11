@@ -224,6 +224,9 @@ class MyNet(nn.Module):
         iconv1 = self.iconv1(concat1)
         self.disp1 = self.disp1_layer(iconv1)
 
+        if self.mode == "test":
+            return self.disp1
+
         disp_list = [self.disp1, self.disp2, self.disp3, self.disp4]
 
         # loss = self.MyLoss(disp_list, [Variable(data['left_img']), Variable(data['right_img'])])
