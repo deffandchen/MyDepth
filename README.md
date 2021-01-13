@@ -1,25 +1,17 @@
 # MyDepth
-Depth Estimation
+PyTorch Implementation of Monocular Depth Estimation 
 
-2020-12-19  complete Network  Model
+2020-12-19      complete Network  Model
 
-2020-12-24   complete project。
+2020-12-24      complete project。
 
-
+2021-01-13      leading performance and complete adaptive weight
 
 ### Note
 
-#### 1、 Loss
+Encoder-decoder based on SE-ResNet
 
-		#### generate_image
-
-
-
-#### L-R Consistency
-
-
-
-#### Disparity smoothness
+Adaptive weight for L-R consistency
 
 
 
