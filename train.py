@@ -27,7 +27,7 @@ from testNet import Resnet50_md
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
 
-parser.add_argument('--mode',                      type=str,   help='train or test', default='test')
+parser.add_argument('--mode',                      type=str,   help='train or test', default='train')
 parser.add_argument('--model_name',                type=str,   help='model name', default='monodepth')
 parser.add_argument('--encoder',                   type=str,   help='type of encoder, vgg or resnet50', default='vgg')
 parser.add_argument('--dataset',                   type=str,   help='dataset to train on, kitti, or cityscapes', default='kitti')
@@ -69,9 +69,9 @@ def adjust_learning_rate(optimizer, epoch, learning_rate):
     """Sets the learning rate to the initial LR\
         decayed by 2 every 10 epochs after 30 epoches"""
 
-    if epoch >= 40 and epoch < 70:
+    if epoch >= 40 and epoch < 80:
         lr = learning_rate / 10.0
-    elif epoch >= 70:
+    elif epoch >= 80:
         lr = learning_rate / 10.0
     else:
         lr = learning_rate
