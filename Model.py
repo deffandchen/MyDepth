@@ -179,7 +179,7 @@ class MyLoss(nn.Module):
         self.left_pix_res = [self.l1_left[i] / self.l1_reconstruction_loss_left[i] for i in range(4)]
         self.right_pix_res = [self.l1_right[i] / self.l1_reconstruction_loss_right[i] for i in range(4)]
 
-        c = 5.0
+        c = 2.0
         self.left_res_weight = [torch.exp(c * (1 - self.left_pix_res[i])) for i in range(4)]
         self.right_res_weight = [torch.exp(c * (1 - self.right_pix_res[i])) for i in range(4)]
 

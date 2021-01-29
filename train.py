@@ -22,7 +22,8 @@ from Model import MyLoss
 from testNet import Resnet50_md
 
 #/media/lab326/9a55ef08-6e15-4a6e-b1c5-9f20232c2f002/lab326/cdf
-
+#--mode train --data_path /media/extdisk1/cdf/kitti/ --output_directory /media/extdisk1/cdf/mydepth_out/
+#--mode test --data_path /media/extdisk1/cdf/kitti/ --output_directory /media/extdisk1/cdf/mydepth_checkpoints/ --filename utils/filenames/kitti_stereo_2015_test_files.txt --checkpoint_path /media/extdisk1/cdf/mydepth_checkpoints/model_99.pt
 #os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
 
 parser = argparse.ArgumentParser(description='Mydepth PyTorch implementation.')
@@ -35,7 +36,7 @@ parser.add_argument('--data_path',                 type=str,   help='path to the
 parser.add_argument('--filename',                  type=str,   help='path to the filenames text file', default="utils/filenames/kitti_train_files.txt")
 parser.add_argument('--input_height',              type=int,   help='input height', default=256)
 parser.add_argument('--input_width',               type=int,   help='input width', default=512)
-parser.add_argument('--batch_size',                type=int,   help='batch size', default=32)
+parser.add_argument('--batch_size',                type=int,   help='batch size', default=48)
 parser.add_argument('--start_epoch',                type=int,   help='start epoch', default=0)
 parser.add_argument('--epochs',                type=int,   help='number of epochs', default=50)
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-3)
@@ -44,7 +45,7 @@ parser.add_argument('--alpha_image_loss',          type=float, help='weight betw
 parser.add_argument('--disp_gradient_loss_weight', type=float, help='disparity smoothness weigth', default=0.1)
 parser.add_argument('--do_stereo',                             help='if set, will train the stereo model', action='store_true')
 parser.add_argument('--wrap_mode',                 type=str,   help='bilinear sampler wrap mode, edge or border', default='border')
-parser.add_argument('--num_gpus',                  type=int,   help='number of GPUs to use for training', default=2)
+parser.add_argument('--num_gpus',                  type=int,   help='number of GPUs to use for training', default=4)
 parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=8)
 parser.add_argument('--output_directory',          type=str,   help='output directory for test disparities, if empty outputs to checkpoint folder', default='')
 parser.add_argument('--log_directory',             type=str,   help='directory to save checkpoints and summaries', default='')
@@ -69,10 +70,10 @@ def adjust_learning_rate(optimizer, epoch, learning_rate):
     """Sets the learning rate to the initial LR\
         decayed by 2 every 10 epochs after 30 epoches"""
 
-    if epoch >= 40 and epoch < 80:
+    if epoch >= 30 and epoch < 70:
         lr = learning_rate / 10.0
-    elif epoch >= 80:
-        lr = learning_rate / 10.0
+    elif epoch >= 70:
+        lr = learning_rate / 5.0
     else:
         lr = learning_rate
     for param_group in optimizer.param_groups:
@@ -104,6 +105,9 @@ def train():
 
     optimizer = optim.Adam(net.parameters(), lr=args.learning_rate)
 
+    if os.path.exists('out.txt'):
+        os.remove('out.txt')
+
     for epoch in range(args.start_epoch,args.epochs):
         adjust_learning_rate(optimizer,epoch,args.learning_rate)
         start_time = time.time()
@@ -119,8 +123,12 @@ def train():
 
             if (i) % 100 == 0:
                 print("[%d / %d, %5d]  loss: %.3f" % (epoch, args.epochs, i, loss.item()))
+            file = open(r'out.txt', mode='w')
+            file.write('Epoch: ' + str(epoch) + ' ' + 'train_loss: ' + str(train_loss / iter))
+            file.close()
         print('Epoch:', epoch + 1, 'train_loss:', train_loss / iter, 'time:',
             round(time.time() - start_time, 3), 's')
+
         torch.save({"net": net.state_dict()},args.output_directory + "model_"+str(epoch+1)+".pt")
 
 
@@ -163,7 +171,7 @@ def test():
             #                           .cpu().numpy())
             print("test: ",i)
 
-    np.save(args.output_directory + '/disparities.npy', disparities)
+    np.save(args.output_directory + '/disparities_80_127_ap.npy', disparities)
     #np.save(args.output_directory + '/disparities_pp.npy', disparities_pp)
     print('Finished Testing')
 
